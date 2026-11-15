@@ -1,0 +1,17 @@
+Author-owned code and synthetic demonstration material
+
+Copyright (c) 2026 the authors. All rights reserved.
+
+The author-owned code and independently generated synthetic demonstration
+material in this repository are provided for peer-review evaluation and
+reproducibility checking only. Other use, redistribution, modification and
+commercial use require prior written permission from the copyright holders.
+
+The material is provided without warranties or guarantees concerning model
+accuracy, scientific validity, fitness for a particular purpose, or reproduction
+of the manuscript's findings.
+
+This notice does not replace or restrict the licenses of third-party code.
+Files carrying an Apache License 2.0 notice remain governed by that license;
+see the Third-party code section in README.md and licenses/Apache-2.0.txt.
+

@@ -1,0 +1,79 @@
+{
+  "description": "Small feature-selection example.",
+  "seed": 42,
+  "workers": 1,
+  "ga": {
+    "population_size": 8,
+    "max_generations": 3,
+    "min_generations": 1,
+    "patience": 2,
+    "min_improvement": 1e-08,
+    "crossover_rate": 0.8,
+    "mutation_rate": 0.1,
+    "tournament_size": 3,
+    "elite_count": 2
+  },
+  "tasks": [
+    {
+      "name": "composition_UTS",
+      "stage": "composition",
+      "target": "UTS",
+      "target_column": "Strength (MPa)",
+      "model": "ridge",
+      "alpha": 10.0,
+      "data": "outputs/02_prediction/composition/train.csv",
+      "features": "outputs/02_prediction/composition/uts_train_fusion.csv",
+      "test_data": "outputs/02_prediction/composition/test.csv",
+      "test_features": "outputs/02_prediction/composition/uts_test_fusion.csv"
+    },
+    {
+      "name": "composition_EL",
+      "stage": "composition",
+      "target": "EL",
+      "target_column": "Elongation (%)",
+      "model": "ridge",
+      "alpha": 10.0,
+      "data": "outputs/02_prediction/composition/train.csv",
+      "features": "outputs/02_prediction/composition/el_train_fusion.csv",
+      "test_data": "outputs/02_prediction/composition/test.csv",
+      "test_features": "outputs/02_prediction/composition/el_test_fusion.csv"
+    },
+    {
+      "name": "process_UTS",
+      "stage": "process",
+      "target": "UTS",
+      "target_column": "Strength (MPa)",
+      "model": "ridge",
+      "alpha": 0.1,
+      "data": "outputs/02_prediction/processing/train.csv",
+      "features": "outputs/02_prediction/processing/uts_train_fusion.csv",
+      "test_data": "outputs/02_prediction/processing/test.csv",
+      "test_features": "outputs/02_prediction/processing/uts_test_fusion.csv"
+    },
+    {
+      "name": "process_EL",
+      "stage": "process",
+      "target": "EL",
+      "target_column": "Elongation (%)",
+      "model": "xgboost",
+      "xgboost": {
+        "n_estimators": 180,
+        "max_depth": 2,
+        "learning_rate": 0.03,
+        "subsample": 0.9,
+        "colsample_bytree": 0.9,
+        "objective": "reg:squarederror",
+        "n_jobs": 1,
+        "verbosity": 0
+      },
+      "data": "outputs/02_prediction/processing/train.csv",
+      "features": "outputs/02_prediction/processing/el_train_fusion.csv",
+      "test_data": "outputs/02_prediction/processing/test.csv",
+      "test_features": "outputs/02_prediction/processing/el_test_fusion.csv"
+    }
+  ],
+  "methods": [
+    "all_features",
+    "GA"
+  ]
+}
