@@ -8,7 +8,7 @@ and ductile titanium alloy**.
 Ti-PMFF combines Ti-BERT text embeddings, element-interaction graph features and
 five physical descriptors: MoEq, AlEq, valence electron concentration, atomic-size
 mismatch and beta-transus temperature. Cross-attention fuses these features, and
-GA selects descriptor subsets for UTS and elongation prediction.
+GA selects descriptor subsets for UTS and EL prediction.
 
 The workflow includes:
 
