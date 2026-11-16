@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Functions and classes related to optimization (weight updates)."""
+"""Adam weight decay with learning-rate warmup and decay."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -53,9 +53,6 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, use_tpu):
     learning_rate = (
         (1.0 - is_warmup) * learning_rate + is_warmup * warmup_learning_rate)
 
-  # It is recommended that you use this optimizer for fine tuning, since this
-  # is how the model was trained (note that the Adam m/v variables are NOT
-  # loaded from init_checkpoint.)
   optimizer = AdamWeightDecayOptimizer(
       learning_rate=learning_rate,
       weight_decay_rate=0.01,
@@ -70,22 +67,20 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, use_tpu):
   tvars = tf.compat.v1.trainable_variables()
   grads = tf.gradients(loss, tvars)
 
-  # This is how the model was pre-trained.
+  # Clip the global gradient norm to 1.
   (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
 
   train_op = optimizer.apply_gradients(
       zip(grads, tvars), global_step=global_step)
 
-  # Normally the global step update is done inside of `apply_gradients`.
-  # However, `AdamWeightDecayOptimizer` doesn't do this. But if you use
-  # a different optimizer, you should probably take this line out.
+  # This optimizer updates the global step separately from the parameters.
   new_global_step = global_step + 1
   train_op = tf.group(train_op, [global_step.assign(new_global_step)])
   return train_op
 
 
 class AdamWeightDecayOptimizer(tf.compat.v1.train.Optimizer):
-  """A basic Adam optimizer that includes "correct" L2 weight decay."""
+  """Adam optimizer with decoupled weight decay."""
 
   def __init__(self,
                learning_rate,
@@ -95,7 +90,6 @@ class AdamWeightDecayOptimizer(tf.compat.v1.train.Optimizer):
                epsilon=1e-6,
                exclude_from_weight_decay=None,
                name="AdamWeightDecayOptimizer"):
-    """Constructs a AdamWeightDecayOptimizer."""
     super(AdamWeightDecayOptimizer, self).__init__(False, name)
 
     self.learning_rate = learning_rate
@@ -106,7 +100,7 @@ class AdamWeightDecayOptimizer(tf.compat.v1.train.Optimizer):
     self.exclude_from_weight_decay = exclude_from_weight_decay
 
   def apply_gradients(self, grads_and_vars, global_step=None, name=None):
-    """See base class."""
+    """Apply parameter and moment updates."""
     assignments = []
     for (grad, param) in grads_and_vars:
       if grad is None or param is None:
@@ -151,7 +145,7 @@ class AdamWeightDecayOptimizer(tf.compat.v1.train.Optimizer):
     return tf.group(*assignments, name=name)
 
   def _do_use_weight_decay(self, param_name):
-    """Whether to use L2 weight decay for `param_name`."""
+    """Determine whether a parameter receives decoupled weight decay."""
     if not self.weight_decay_rate:
       return False
     if self.exclude_from_weight_decay:

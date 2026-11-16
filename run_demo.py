@@ -1,4 +1,4 @@
-"""Run the Ti-PMFF demo and optional supplementary figure exports."""
+"""Run the Ti-PMFF demo with optional figures and tables."""
 import argparse
 import os
 from pathlib import Path

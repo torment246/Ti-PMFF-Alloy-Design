@@ -1,4 +1,4 @@
-"""Create MLM/NSP training examples and train Ti-BERT on a GPU."""
+"""Train Ti-BERT with masked-language modelling and next-sentence prediction."""
 import argparse
 import json
 import os

@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# Adapted to expose training-example generation as callable functions.
 """Create MLM/NSP examples for BERT."""
 
 from __future__ import absolute_import
@@ -110,7 +109,7 @@ def write_instance_to_example_files(instances, tokenizer, max_seq_length,
     total_written += 1
 
     if inst_index < 20:
-      tf.compat.v1.logging.info("*** Example ***")
+      tf.compat.v1.logging.info("Pretraining example")
       tf.compat.v1.logging.info("tokens: %s" % " ".join(
           [tokenization.printable_text(x) for x in instance.tokens]))
 

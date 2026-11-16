@@ -1,11 +1,11 @@
-"""Compact processing-route Top-K table."""
+"""Select the highest-scoring processing routes."""
 import pandas as pd
 
 
 def select_topk(ranked: pd.DataFrame, top_k: int = 10) -> pd.DataFrame:
     out = ranked.sort_values("final_score", ascending=False, kind="stable").head(top_k).copy()
     out.insert(0, "rank", range(1, len(out) + 1))
-    out["recommendation_type"] = "Top-K工艺设计候选"
+    out["recommendation_type"] = "Top-K processing candidate"
     columns = [
         "rank", "recommendation_type", "candidate_id", "composition_id",
         "Ti (wt%)", "Al (wt%)", "V (wt%)", "Mo (wt%)", "Fe (wt%)", "Sn (wt%)",

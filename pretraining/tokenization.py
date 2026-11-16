@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tokenization classes."""
+"""Basic and WordPiece tokenization."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -28,8 +28,6 @@ import tensorflow as tf
 
 def validate_case_matches_checkpoint(do_lower_case, init_checkpoint):
   """Checks whether the casing config is consistent with the checkpoint name."""
-
-  # Match tokenizer casing to the checkpoint.
 
   if not init_checkpoint:
     return
@@ -65,11 +63,8 @@ def validate_case_matches_checkpoint(do_lower_case, init_checkpoint):
 
   if is_bad_config:
     raise ValueError(
-        "You passed in `--do_lower_case=%s` with `--init_checkpoint=%s`. "
-        "However, `%s` seems to be a %s model, so you "
-        "should pass in `--do_lower_case=%s` so that the fine-tuning matches "
-        "how the model was pre-training. If this error is wrong, please "
-        "just comment out this check." % (actual_flag, init_checkpoint,
+        "Tokenizer casing (--do_lower_case=%s) does not match checkpoint %s "
+        "(%s, %s). Use --do_lower_case=%s." % (actual_flag, init_checkpoint,
                                           model_name, case_name, opposite_flag))
 
 
@@ -157,7 +152,7 @@ def whitespace_tokenize(text):
 
 
 class FullTokenizer(object):
-  """Runs end-to-end tokenziation."""
+  """Tokenize text using basic and WordPiece tokenization."""
 
   def __init__(self, vocab_file, do_lower_case=True):
     self.vocab = load_vocab(vocab_file)
@@ -184,7 +179,6 @@ class BasicTokenizer(object):
   """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
 
   def __init__(self, do_lower_case=True):
-    """Constructs a BasicTokenizer."""
     self.do_lower_case = do_lower_case
 
   def tokenize(self, text):
@@ -253,14 +247,14 @@ class BasicTokenizer(object):
   def _is_chinese_char(self, cp):
     """Checks whether CP is the codepoint of a CJK character."""
     # CJK Unicode blocks.
-    if ((cp >= 0x4E00 and cp <= 0x9FFF) or  #
-        (cp >= 0x3400 and cp <= 0x4DBF) or  #
-        (cp >= 0x20000 and cp <= 0x2A6DF) or  #
-        (cp >= 0x2A700 and cp <= 0x2B73F) or  #
-        (cp >= 0x2B740 and cp <= 0x2B81F) or  #
+    if ((cp >= 0x4E00 and cp <= 0x9FFF) or
+        (cp >= 0x3400 and cp <= 0x4DBF) or
+        (cp >= 0x20000 and cp <= 0x2A6DF) or
+        (cp >= 0x2A700 and cp <= 0x2B73F) or
+        (cp >= 0x2B740 and cp <= 0x2B81F) or
         (cp >= 0x2B820 and cp <= 0x2CEAF) or
-        (cp >= 0xF900 and cp <= 0xFAFF) or  #
-        (cp >= 0x2F800 and cp <= 0x2FA1F)):  #
+        (cp >= 0xF900 and cp <= 0xFAFF) or
+        (cp >= 0x2F800 and cp <= 0x2FA1F)):
       return True
 
     return False
@@ -280,7 +274,7 @@ class BasicTokenizer(object):
 
 
 class WordpieceTokenizer(object):
-  """Runs WordPiece tokenziation."""
+  """WordPiece tokenization."""
 
   def __init__(self, vocab, unk_token="[UNK]", max_input_chars_per_word=200):
     self.vocab = vocab
@@ -328,7 +322,7 @@ class WordpieceTokenizer(object):
 
 def _is_whitespace(char):
   """Checks whether `chars` is a whitespace character."""
-  # \t, \n, and \r are technically contorl characters but we treat them
+  # \t, \n, and \r are technically control characters but we treat them
   # as whitespace since they are generally considered as such.
   if char == " " or char == "\t" or char == "\n" or char == "\r":
     return True

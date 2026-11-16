@@ -38,7 +38,7 @@ def convert_examples_to_features(examples, seq_length, tokenizer):
             # Reserve space for [CLS] and both [SEP] tokens.
             _truncate_seq_pair(tokens_a, tokens_b, seq_length - 3)
         else:
-            # Account for [CLS] and [SEP] with "- 2"
+            # Reserve space for [CLS] and [SEP].
             if len(tokens_a) > seq_length - 2:
                 tokens_a = tokens_a[0:(seq_length - 2)]
 
@@ -76,7 +76,7 @@ def convert_examples_to_features(examples, seq_length, tokenizer):
         assert len(input_type_ids) == seq_length
 
         if ex_index < 5:
-            tf.logging.info("*** Example ***")
+            tf.logging.info("BERT input example")
             tf.logging.info("unique_id: %s" % (example.unique_id))
             tf.logging.info("tokens: %s" % " ".join(
                 [tokenization.printable_text(x) for x in tokens]))

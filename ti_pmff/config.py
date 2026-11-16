@@ -1,4 +1,4 @@
-"""Default configuration for Ti-PMFF wrappers."""
+"""Default input paths and target-column names."""
 
 from __future__ import annotations
 

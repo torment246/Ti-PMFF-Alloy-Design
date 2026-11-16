@@ -1,4 +1,4 @@
-"""Scoring functions for joint composition-process candidates."""
+"""Score processing candidates using uncertainty, performance and diversity."""
 
 from __future__ import annotations
 
@@ -92,28 +92,29 @@ def _composition_penalty(
     elements = ["Ti (wt%)", "Al (wt%)", "V (wt%)", "Mo (wt%)", "Fe (wt%)", "Sn (wt%)"]
     if row["Ti (wt%)"] <= 0:
         penalty += 0.5
-        violations.append("Ti非正")
+        violations.append("Nonpositive Ti content")
     if row["Al (wt%)"] <= 0:
         penalty += 0.3
-        violations.append("Al非正")
+        violations.append("Nonpositive Al content")
     if row["V (wt%)"] <= 0:
         penalty += 0.3
-        violations.append("V非正")
+        violations.append("Nonpositive V content")
     if row["Mo (wt%)"] <= 0 or row["Mo (wt%)"] < min_effective_mo:
         penalty += 0.3
-        violations.append("Mo低于有效下限")
+        violations.append("Mo below the minimum effective content")
     if row["Fe (wt%)"] <= 0 or row["Fe (wt%)"] < min_effective_fe:
         penalty += 0.3
-        violations.append("Fe低于有效下限")
+        violations.append("Fe below the minimum effective content")
     if row["Sn (wt%)"] <= 0:
         penalty += 0.3
-        violations.append("Sn非正")
+        violations.append("Nonpositive Sn content")
     if any(float(row[col]) < 0 for col in elements):
         penalty += 0.5
-        violations.append("元素含量为负")
-    if abs(sum(float(row[col]) for col in elements) - 100.0) > 0.5:
+        violations.append("Negative elemental content")
+    total = sum(float(value) for value in row.filter(regex=r" \(wt%\)$"))
+    if abs(total - 100.0) > 0.5:
         penalty += 0.3
-        violations.append("元素总和偏离100")
+        violations.append("Total elemental content outside 100 +/- 0.5 wt.%")
     stats = comp_stats.set_index("element")
     for col in ["Al (wt%)", "V (wt%)", "Mo (wt%)", "Fe (wt%)", "Sn (wt%)"]:
         if col == "Sn (wt%)" and sn_range[0] <= float(row[col]) <= sn_range[1]:
@@ -123,36 +124,36 @@ def _composition_penalty(
             span = max(float(stats.loc[col, "q95"] - stats.loc[col, "q05"]), 1.0)
             if val < float(stats.loc[col, "q05"]) - span or val > float(stats.loc[col, "q95"]) + span:
                 penalty += 0.05
-                violations.append(f"{col}超出训练分位范围")
+                violations.append(f"{col} outside the extended training quantile range")
     beta_stabilizer_sum = float(row["V (wt%)"]) + float(row["Mo (wt%)"]) + float(row["Fe (wt%)"])
     mo_fe_sum = float(row["Mo (wt%)"]) + float(row["Fe (wt%)"])
     if mo_fe_sum < 1.0:
         penalty += 0.05
-        violations.append("Mo+Fe低于1.0")
+        violations.append("Mo + Fe below 1.0 wt.%")
     if beta_stabilizer_sum > 0 and float(row["V (wt%)"]) / beta_stabilizer_sum > 0.85:
         penalty += 0.05
-        violations.append("V在beta稳定元素中过度主导")
+        violations.append("V exceeds 85% of V + Mo + Fe")
     for col in PHYSICAL_NAMES:
         val = float(row[col])
         span = max(float(physical_q95[col] - physical_q05[col]), 1.0)
         if val < float(physical_q05[col]) - span or val > float(physical_q95[col]) + span:
             penalty += 0.05
-            violations.append(f"{col}超出训练合理范围")
-    return min(penalty, 1.0), "; ".join(violations) if violations else "无明显成分约束风险"
+            violations.append(f"{col} outside the extended training quantile range")
+    return min(penalty, 1.0), "; ".join(violations) if violations else "No composition constraint violations"
 
 
 def _process_penalty(row: pd.Series) -> tuple[float, str]:
     penalty = 0.0
     violations = []
     checks = [
-        ("initial_temp", "初始温度非正", lambda v: v <= 0, 0.3),
-        ("secondary_temp", "二次温度非正", lambda v: v <= 0, 0.3),
-        ("initial_time", "初始时间非正", lambda v: v <= 0, 0.2),
-        ("secondary_time", "二次时间非正", lambda v: v <= 0, 0.2),
-        ("deformation_per_pass", "单道变形非正", lambda v: v <= 0, 0.2),
-        ("passes", "passes非正", lambda v: v <= 0, 0.2),
-        ("total_cyclic_deformation", "循环变形不在0-100", lambda v: v < 0 or v > 100, 0.3),
-        ("final_total_deformation", "最终变形不在0-100", lambda v: v < 0 or v > 100, 0.3),
+        ("initial_temp", "Invalid initial temperature", lambda v: v <= 0, 0.3),
+        ("secondary_temp", "Invalid secondary temperature", lambda v: v <= 0, 0.3),
+        ("initial_time", "Invalid initial holding time", lambda v: v <= 0, 0.2),
+        ("secondary_time", "Invalid secondary holding time", lambda v: v <= 0, 0.2),
+        ("deformation_per_pass", "Invalid deformation per pass", lambda v: v <= 0, 0.2),
+        ("passes", "Invalid number of passes", lambda v: v <= 0, 0.2),
+        ("total_cyclic_deformation", "Cyclic deformation missing or outside 0-100%", lambda v: v < 0 or v > 100, 0.3),
+        ("final_total_deformation", "Final deformation missing or outside 0-100%", lambda v: v < 0 or v > 100, 0.3),
     ]
     for col, label, fn, value_penalty in checks:
         val = float(row.get(col, np.nan))
@@ -161,11 +162,11 @@ def _process_penalty(row: pd.Series) -> tuple[float, str]:
             violations.append(label)
     if float(row["final_total_deformation"]) < float(row["initial_deformation"]):
         penalty += 0.1
-        violations.append("最终变形小于初始变形")
+        violations.append("Final deformation below initial deformation")
     if float(row["final_total_deformation"]) < float(row["total_cyclic_deformation"]):
         penalty += 0.05
-        violations.append("最终变形小于循环总变形")
-    return min(penalty, 1.0), "; ".join(violations) if violations else "无明显工艺约束风险"
+        violations.append("Final deformation below total cyclic deformation")
+    return min(penalty, 1.0), "; ".join(violations) if violations else "No processing constraint violations"
 
 
 def score_joint_candidates(
@@ -234,6 +235,6 @@ def score_joint_candidates(
     ranked["meets_UTS_target"] = ranked["mean_UTS"] >= target_uts
     ranked["meets_EL_target"] = ranked["mean_EL"] >= target_el
     ranked["meets_both_targets"] = ranked["meets_UTS_target"] & ranked["meets_EL_target"]
-    ranked["recommendation_type"] = "未入选"
-    ranked["selection_role"] = "候选样本"
+    ranked["recommendation_type"] = "Not selected"
+    ranked["selection_role"] = "Candidate"
     return ranked.sort_values("final_score", ascending=False).reset_index(drop=True)

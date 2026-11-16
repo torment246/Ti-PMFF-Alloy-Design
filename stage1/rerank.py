@@ -29,6 +29,7 @@ def rerank(train, candidates, predictions, physical_ranges, target_uts=1100.0, t
     candidate_scaled = ((candidate_values - center) / scale).to_numpy()
     distance = np.linalg.norm(candidate_scaled[:, None, :] - train_scaled[None, :, :], axis=2).min(axis=1)
     ranked["nearest_train_distance"] = distance
+    # Normalize over the candidate pool; confidence is the complement of diversity.
     ranked["confidence_component"] = 1.0 - minmax(distance)
     ranked["diversity_component"] = minmax(distance)
 

@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""The main BERT model and related functions."""
+"""BERT encoder and attention layers."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -44,7 +44,6 @@ class BertConfig(object):
                  max_position_embeddings=512,
                  type_vocab_size=16,
                  initializer_range=0.02):
-        """Constructs BertConfig."""
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
@@ -67,7 +66,7 @@ class BertConfig(object):
 
     @classmethod
     def from_json_file(cls, json_file):
-        """Constructs a `BertConfig` from a json file of parameters."""
+        """Construct a `BertConfig` from a JSON file."""
         with tf.compat.v1.gfile.GFile(json_file, "r") as reader:
             text = reader.read()
         return cls.from_dict(json.loads(text))
@@ -93,7 +92,6 @@ class BertModel(object):
                  token_type_ids=None,
                  use_one_hot_embeddings=False,
                  scope=None):
-        """Constructor for BertModel."""
         config = copy.deepcopy(config)
         if not is_training:
             config.hidden_dropout_prob = 0.0
@@ -159,8 +157,6 @@ class BertModel(object):
             self.sequence_output = self.all_encoder_layers[-1]
             # Pool the first token into a sequence-level representation.
             with tf.variable_scope("pooler"):
-                # We "pool" the model by simply taking the hidden state corresponding
-                # to the first token. We assume that this has been pre-trained
                 first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
                 self.pooled_output = tf.compat.v1.layers.dense(
                     first_token_tensor,
@@ -199,8 +195,7 @@ def gelu(x):
 def get_activation(activation_string):
     """Maps a string to a Python function, e.g., "relu" => `tf.nn.relu`."""
 
-    # We assume that anything that"s not a string is already an activation
-    # function, so we just return it.
+    # Accept activation callables directly.
     if not isinstance(activation_string, six.string_types):
         return activation_string
 
@@ -377,9 +372,6 @@ def create_attention_mask_from_input_mask(from_tensor, to_mask):
         tf.reshape(to_mask, [batch_size, 1, to_seq_length]), tf.float32)
 
     # Broadcast the key-token mask over query positions.
-    
-    # broadcast_ones = tf.ones(
-    #     shape=[batch_size, from_seq_length, 1], dtype=tf.float32)
     broadcast_ones = tf.ones(shape=tf.stack([batch_size, from_seq_length, 1]), dtype=tf.float32)
 
     # Here we broadcast along two dimensions to create the mask.
@@ -568,7 +560,6 @@ def transformer_model(input_tensor,
 
             with tf.variable_scope("attention"):
                 attention_heads = []
-                #attention_ws = []
                 with tf.variable_scope("self"):
                     attention_head, attention_w = attention_layer(
                         from_tensor=layer_input,
@@ -582,8 +573,7 @@ def transformer_model(input_tensor,
                         batch_size=batch_size,
                         from_seq_length=seq_length,
                         to_seq_length=seq_length)
-                    attention_heads.append(attention_head)  # 一个编码块的所有注意力头
-                    #attention_ws.append(attention_w)  # B N F T  batchsize*num_heads*128*128
+                    attention_heads.append(attention_head)
                     attention_ws = attention_w
 
                 attention_output = None
@@ -602,7 +592,7 @@ def transformer_model(input_tensor,
                         hidden_size,
                         kernel_initializer=create_initializer(initializer_range))
                     attention_output = dropout(attention_output, hidden_dropout_prob)
-                    attention_output = layer_norm(attention_output + layer_input)  # 残差连接
+                    attention_output = layer_norm(attention_output + layer_input)
 
             # The activation is only applied to the "intermediate" hidden layer.
             with tf.variable_scope("intermediate"):
@@ -622,7 +612,7 @@ def transformer_model(input_tensor,
                 layer_output = layer_norm(layer_output + attention_output)
                 prev_output = layer_output
                 all_layer_outputs.append(layer_output)
-                all_attention_ws.append(attention_ws)  # 所有encoder的注意力权重
+                all_attention_ws.append(attention_ws)
 
     if do_return_all_layers:
         final_outputs = []

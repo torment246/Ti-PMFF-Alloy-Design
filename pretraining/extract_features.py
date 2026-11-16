@@ -1,4 +1,4 @@
-"""Extract token embeddings or attention matrices from the released BERT model."""
+"""Extract token embeddings or attention matrices from a BERT checkpoint."""
 
 import argparse
 import json
